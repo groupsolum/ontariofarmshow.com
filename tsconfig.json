@@ -20,7 +20,8 @@
     ],
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "types": ["node", "react", "react-dom", "mapbox-gl"]
   },
   "include": [
     "next-env.d.ts",
