@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EventCard } from "@/components/events/event-card";
 import { EmailSignupForm } from "@/components/subscribe/email-signup-form";
+import { HeroVideo } from "@/components/hero/hero-video";
+import { EventCountdown } from "@/components/hero/event-countdown";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Event } from "@/types/event";
 
@@ -37,28 +39,60 @@ async function getEventCount(): Promise<number> {
   return count || 0;
 }
 
+async function getNextOrCurrentEvent(): Promise<Event | null> {
+  const supabase = createAdminClient();
+  const today = new Date().toISOString().split("T")[0];
+
+  // First check for events happening right now (started but not ended)
+  const { data: inProgress } = await supabase
+    .from("events")
+    .select("*")
+    .eq("status", "published")
+    .lte("start_date", today)
+    .gte("end_date", today)
+    .order("start_date", { ascending: true })
+    .limit(1);
+
+  if (inProgress && inProgress.length > 0) return inProgress[0] as Event;
+
+  // Otherwise get the next upcoming event
+  const { data: upcoming } = await supabase
+    .from("events")
+    .select("*")
+    .eq("status", "published")
+    .gt("start_date", today)
+    .order("start_date", { ascending: true })
+    .limit(1);
+
+  if (upcoming && upcoming.length > 0) return upcoming[0] as Event;
+
+  return null;
+}
+
 export default async function HomePage() {
-  const [featuredEvents, eventCount] = await Promise.all([
+  const [featuredEvents, eventCount, nextEvent] = await Promise.all([
     getFeaturedEvents(),
     getEventCount(),
+    getNextOrCurrentEvent(),
   ]);
 
   return (
     <>
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-primary/5 via-primary/10 to-background pb-16 pt-20 md:pb-24 md:pt-28">
-        <div className="container mx-auto px-4">
+      {/* Hero Section with Video Backdrop */}
+      <section className="relative min-h-[600px] overflow-hidden bg-black pb-16 pt-20 md:min-h-[700px] md:pb-24 md:pt-28">
+        <HeroVideo />
+        <div className="container relative z-10 mx-auto px-4">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-medium text-white backdrop-blur-sm">
               <Tractor className="h-4 w-4" />
               <span>Your Guide to Ontario&apos;s Agricultural Events</span>
             </div>
-            <h1 className="mb-6 text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
+            <h1 className="mb-6 text-4xl font-bold tracking-tight text-white md:text-5xl lg:text-6xl">
               Discover{" "}
-              <span className="text-primary">Farm Shows</span> Across
+              <span className="text-green-400">Farm Shows</span> Across
               Ontario
             </h1>
-            <p className="mb-8 text-lg text-muted-foreground md:text-xl">
+            <p className="mb-8 text-lg text-white/80 md:text-xl">
               Find every farm show, agricultural fair, and farming event in
               Ontario. Browse {eventCount}+ events with interactive maps, dates,
               locations, and ticket information.
@@ -71,12 +105,24 @@ export default async function HomePage() {
                 </Button>
               </Link>
               <Link href="/map">
-                <Button size="lg" variant="outline" className="gap-2">
+                <Button size="lg" variant="outline" className="gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20">
                   <MapPin className="h-4 w-4" />
                   View Map
                 </Button>
               </Link>
             </div>
+            {nextEvent && (
+              <EventCountdown
+                event={{
+                  title: nextEvent.title,
+                  slug: nextEvent.slug,
+                  city: nextEvent.city,
+                  start_date: nextEvent.start_date,
+                  end_date: nextEvent.end_date,
+                  venue_name: nextEvent.venue_name,
+                }}
+              />
+            )}
           </div>
         </div>
       </section>
