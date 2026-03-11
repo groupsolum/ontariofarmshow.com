@@ -72,7 +72,7 @@ const clusterLayer: LayerProps = {
   source: "events",
   filter: ["has", "point_count"],
   paint: {
-    "circle-color": "#0ea5e9",
+    "circle-color": "#16a34a",
     "circle-radius": [
       "step",
       ["get", "point_count"],
